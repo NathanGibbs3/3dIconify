@@ -1,0 +1,398 @@
+#!/usr/bin/env php
+<?php
+
+// 3dIconify
+// Copyright (C) 2019-2023 Nathan Gibbs
+//
+// For license info: See the file LICENSE
+//     Project Lead: Nathan Gibbs
+//          Purpose: Build Web App Icons from the files provided by the
+//                   3dIcons library. https://github.com/realvjy/3dicons
+//                   Generates a smaller icon on transparent background
+//                   from the requested 3dIcon resource.
+//                   Supports project specific naming conventions, and icon
+//                   name conversion.
+//        Author(s): Nathan Gibbs
+//
+
+$debug = 0; // Debuging output information level.
+$Testing = 0; // Run in testing mode. Do not write to the filse system.
+
+$BD = getcwd();
+if( $debug > 0 ){
+	print '     Running: ' . __FILE__ . "\n";
+	print "  Running in: $BD\n";
+	print "With Options:\n";
+	print_r($argv);
+}
+
+// Set defaults.
+$Ver = '0.0.1'; // Release Version
+$sc = DIRECTORY_SEPARATOR;
+$IconSets = array(
+	'd' => 'dynamic',
+	'f' => 'front',
+	'i' => 'iso',
+); // Dynamic, Front, ISO
+$IconTypes = array(
+	'm' => 'clay',
+	'c' => 'color',
+	'g' => 'gradient',
+	'p' => 'premium',
+); // Clay, Color, Gradient, Premium
+$IconSrc = '3dIcons'; // Default localtion of 3dIcons files.
+$IconDst = 'Icons'; // Default localtion of generated icon files.
+$IconSize = 96; // Default Dst Icon size.
+$IconBTP = 1; // Default Background Transparency On
+$IconSet = 'front'; // Default 3dIcon set Front.
+$IconType = 'color'; // Default 3dIcon Type Color.
+$IconList = ''; // Icon names to work with.
+$Project = false; // Project Flag.
+$PFile = ''; // Project File.
+$PPfx = ''; // Project Naming Prefix.
+$PNcv = ''; // Project Name Conversion List.
+$SF = true; // Start Flag.
+
+print "3dIconify $Ver (c) 2019-2023 Nathan Gibbs.\n\n";
+
+if( isset($argv[1]) ){ // 3dIcons directory or Project file.
+	if( LoadedString($argv[1]) ){
+		$tmp = preg_replace("/\.3dicp$/", '', $argv[1]);
+		if( ChkAccess("$tmp.3dicp", 'f') == 1 ){
+			if( $debug > 0 ){
+				print "Project file found: $tmp.3dicp\n";
+			}
+			$Project = true;
+			$PFile = "$tmp.3dicp";
+		}elseif( ChkAccess($tmp, 'd') == 1){
+			if( $debug > 0 ){
+				print "3dIcons found: $tmp\n";
+			}
+			$IconSrc = preg_replace("/^\.\//", '', $tmp);
+		}else{
+			if( $debug > 0 ){
+				print "3dIcons not found: $argv[1]\n";
+				print "         Fallback: $IconSrc\n";
+			}
+			$SF = false;
+		}
+	}
+}
+if( !$Project ){
+	if( isset($argv[2]) ){ // Dst Icon directory.
+		if( LoadedString($argv[2]) && ChkAccess($argv[2], 'd') ){
+			$IconDst = preg_replace("/^\.\//", '', $argv[2]);
+		}else{
+			print "Icon dst not found: $argv[2]\n";
+			print "          Fallback: $IconDst\n";
+		}
+	}
+	if( isset($argv[3]) ){ // Dst Icon Size
+		if( is_int($argv[3]) ){
+			$IconSize = $argv[3];
+		}
+	}
+	if( isset($argv[4]) ){ // Icon Background Transparency.
+		if( is_int($argv[4]) ){
+			$IconBTP = $argv[4];
+		}
+	}
+	if( isset($argv[5]) ){ // Icon Set
+		if( LoadedString($argv[5]) ){
+			$tmp = trim($argv[5]);
+			$tmp = strtolower($tmp);
+			if( in_array($tmp, array_keys($IconSets)) ){
+				$IconSet = $IconSets[$tmp];
+			}
+		}
+	}
+	if( isset($argv[6]) ){ // Icon Type
+		if( LoadedString($argv[6]) ){
+			$tmp = trim($argv[6]);
+			$tmp = strtolower($tmp);
+			if( in_array($tmp, array_keys($IconTypes)) ){
+				$IconType = $IconTypes[$tmp];
+			}
+		}
+	}
+	if( isset($argv[7]) ){ // Icon List
+		if( LoadedString($argv[7]) ){
+			$IconList = explode(',', $argv[7]);
+		}
+	}
+}else{ // Process Project File.
+	if( ChkAccess($PFile, 'f') == 1 ){
+		print "  Project file: $PFile\n";
+		$lines = file($PFile, FILE_IGNORE_NEW_LINES);
+		if( is_array($lines) ){
+			$IconList = array();
+			$PNcv = array();
+			$CRE = "(\#|\/\/)"; // Comments.
+			foreach( $lines as $copt ){ // Coments & blank lines.
+				if( preg_match('/^' . "($|$CRE)" . '/', $copt) ){
+					continue;
+				}
+				// Comments afte conf vars.
+				$copt = preg_replace('/' . "\s+$CRE.*" . '$/', '', $copt);
+				$CVRe = '([[:alnum:]-]+) ?= ?([[:alnum:]' . "\\$sc\_\-]+)?";
+				if( preg_match('/^' . $CVRe . '$/', $copt, $opt) ){
+					if( $debug > 0 ){
+						print "\t$copt\n";
+					}
+					switch( $opt[1] ){
+						case 'src';
+						case 'in';
+						case 'input';
+							$IconSrc = $opt[2];
+							break;
+						case 'dst';
+						case 'out';
+						case 'output';
+							$IconDst = $opt[2];
+							break;
+						case 'clear';
+						case 'clearBG';
+						case 'trans';
+						case 'transparent';
+							if( is_numeric($opt[2]) ){
+								$IconBTP = 0;
+								if( $opt[2] > 0 ){
+									$IconBTP = 1;
+								}
+							}
+							break;
+						case 'set';
+						case 'iconset';
+							$tmp = trim($opt[2]);
+							$tmp = strtolower($tmp);
+							if( in_array($tmp, array_values($IconSets)) ){
+								$IconSet = $tmp;
+							}
+							break;
+						case 'type';
+						case 'icontype';
+							$tmp = trim($opt[2]);
+							$tmp = strtolower($tmp);
+							if( in_array($tmp, array_values($IconTypes)) ){
+								$IconType = $tmp;
+							}
+							break;
+						case 'naming';
+							$PPfx = $opt[2];
+							break;
+						case 'iconsize';
+						case 'size';
+							$IconSize = $opt[2];
+							break;
+						default; // It's part of the name translation array.
+							array_push($IconList, $opt[1]);
+							if( isset($opt[2]) ){
+								$PNcv[$opt[1]] = $opt[2];
+							}else{
+								$PNcv[$opt[1]] = $opt[1];
+							}
+					}
+				}
+			}
+		}
+	}
+}
+
+$In = "$IconSrc$sc";
+$Out = "$IconDst$sc";
+if( LoadedString($PPfx) ){
+	print " Icon Name Pfx: $PPfx\n";
+}
+print "  Reading from: $In\n";
+print "    Writing to: $Out\n";
+print"BG Tranparency: $IconBTP\n";
+print "Icon selection: $IconSet-$IconType\n";
+print "     Icon size: $IconSize\n";
+// Final Settings Check
+if( ChkAccess($In, 'd') != 1 ){
+	print "Icon src not readable: $In\n";
+	$SF = false;
+}
+if( ChkAccess($Out, 'd') != 1 ){
+	print "Icon dst not found: $Out\n";
+	$SF = false;
+}
+if( !$SF ){
+	exit;
+}
+
+$IFL = $In . "3dicons-png-$IconSet-*" . $sc
+. "png$sc*$sc*$IconSet-$IconType.png";
+// The Loose Globex below works better with 3dIcons 1.0.0
+// See:
+// https://github.com/realvjy/3dicons/issues/1
+// https://github.com/realvjy/3dicons/issues/2
+// https://github.com/realvjy/3dicons/issues/3
+//$IFL = $In . "3dicons-png-$IconSet-*$sc" . "png$sc*$sc*$IconType.png";
+if( $debug > 0 ){
+	print "File Search Glob: $IFL\n";
+}
+$icfiles = iconfiles($IFL);
+
+if( !is_array($IconList) ){
+	print "No Icons specified.\n";
+	$ffl = NULL;
+	$frl = NULL;
+}else{
+	$ffl = array();
+	$frl = array();
+	$FRPfx = preg_quote($In . "3dicons-png-$IconSet-", '/') . '.*';
+	$FRPfx .= preg_quote($sc . "png$sc", '/') . '.*';
+	$FRPfx .= preg_quote($sc, '/');
+	$FRSfx = preg_quote("-$IconSet-$IconType.png", '/');
+	if ($debug > 0) {
+		print "File Search RE Pfx: $FRPfx\n";
+		print "File Search RE Sfx: $FRSfx\n";
+		print "Building List:\n";
+	}
+	foreach( $IconList as $tiv ){
+		$TRe = "$FRPfx$tiv$FRSfx";
+		if ($debug > 0) {
+			print "File Match RE: $TRe\n";
+		}
+		foreach( $icfiles as $tf ){
+			if( preg_match('/^' . $TRe . '$/', $tf) ){
+				if ($debug > 0) {
+					print "File Match: $tf\n";
+				}
+				array_push($frl, $tiv); // Final Rename List.
+				array_push($ffl, $tf); // Final File List.
+			}
+		}
+	}
+}
+
+if( is_array($ffl) ){
+	foreach( $ffl as $file ){
+		$fn = preg_replace('/^' . $FRPfx . '/', '', $file);
+		$fn = preg_replace('/' . $FRSfx . '$/', '', $fn);
+		if( $debug > 0 ){
+			print "Input file: $file\n";
+			print "Input Icon: $fn\n";
+		}
+		if( is_array($PNcv) && in_array($fn, array_keys($PNcv)) ){
+			$Ov = $Out . $PPfx . $PNcv[$fn] . '.png';
+		}else{
+			$Ov = $Out . $PPfx . $fn . '.png';
+		}
+		print "Building: $Ov\n";
+		if( $Testing == 0 ){
+			//$image = imagecreatefromjpeg($file); // For JPEG
+			//$image = imagecreatefromgif($file);   // For GIF
+			$image = imagecreatefrompng($file);   // For PNG
+			// Src dimensions
+			$Srcw = imagesx($image);
+			$Srch = imagesy($image);
+			// Scale down.
+			$imgResized = imagescale($image, $IconSize, $IconSize);
+			if( $IconBTP > 0 ){ // Transparent background color
+				// Get background Coloe
+				$rgb = imagecolorat($image, 10, 10);
+				$r = ($rgb >> 16) & 0xFF;
+				$g = ($rgb >> 8) & 0xFF;
+				$b = $rgb & 0xFF;
+				imagesavealpha($imgResized, true);
+				imagecolorallocatealpha($imgResized, $r, $g, $b, 127);
+			}
+			// Save to disk.
+			//imagejpeg($imgResized, $Ov); //for jpeg
+			imagepng($imgResized, $Ov); //for png
+		}else{
+			print "Would read: $file\n";
+			print "Would write: $Ov\n";
+		}
+	}
+}
+
+function iconfiles( $Path ){ // Returns array of files.
+	GLOBAL $debug;
+	$sc = DIRECTORY_SEPARATOR;
+	$EMPfx = __FUNCTION__ . ': ';
+	if( $debug > 0 ){
+		print $EMPfx . "PATH: $Path\n";
+	}
+	$testfiles = array();
+	$files = glob($Path);
+	if( !is_array($files) || empty($files)){
+		$files = NULL;
+	}
+	return $files;
+}
+
+// Routines from the BASE RTL
+// Returns true if var is a string containing data.
+function LoadedString( $var ){
+	$Ret = false;
+	if ( is_string($var) && !empty($var)){
+		$Ret = true;
+	}
+	return $Ret;
+}
+
+// Returns Semantic PHP Version
+function GetPHPSV(){
+	$phpv = phpversion();
+	$phpv = explode('.', $phpv);
+	// Account for x.x.xXX subversions possibly having text like 4.0.4pl1
+	if( is_numeric(substr($phpv[2], 1, 1)) ){ // No Text
+		$phpv[2] = substr($phpv[2], 0, 2);
+	}else{
+		$phpv[2] = substr($phpv[2], 0, 1);
+	}
+	return $phpv;
+}
+
+// Returns 1 if file or directory passes access checks.
+// Returns < 1 error code otherwise.
+function ChkAccess( $path, $type = 'f' ){
+	$Ret = 0; // Path Error
+	if ( LoadedString($path) ){
+		$type = strtolower($type);
+		$rcf = 0;
+		$Ret = -1; // Type Error
+		if ( $type == 'f' ){
+			if ( is_file($path) ){
+				$rcf = 1;
+			}
+		}elseif ( $type == 'd' ){
+			if ( is_dir($path) ){
+				$rcf = 1;
+			}
+		}
+		if ( $rcf == 1 ){
+			$Ret = -2; // Readable Error
+			$PHPVer = GetPHPSV();
+			// PHP Safe Mode cutout.
+			//    Added: 2005-03-25 for compatabibility with PHP 4x & 5.0x
+			//      See: https://sourceforge.net/p/secureideas/bugs/47
+			// PHP Safe Mode w/o cutout successful.
+			// Verified: 2019-05-31 PHP 5.3.29 via CI & Unit Tests.
+			//      See: https://github.com/NathanGibbs3/BASE/issues/34
+			// May work: PHP > 5.1.4.
+			//      See: https://www.php.net/manual/en/function.is-readable.php
+			if (
+				$PHPVer[0] > 5 || ($PHPVer[0] == 5 && $PHPVer[1] > 1)
+				|| ($PHPVer[0] == 5 && $PHPVer[1] == 1 && $PHPVer[2] > 4)
+				|| ini_get("safe_mode") != true
+			){
+				if ( is_readable($path) ){
+					$Ret = 1;
+				}
+			}else{
+				// @codeCoverageIgnoreStart
+				// PHPUnit test only covers this code path on PHP < 5.1.5
+				// Unable to validate in CI.
+				$Ret = 1;
+				// @codeCoverageIgnoreEnd
+			}
+		}
+	}
+	return $Ret;
+}
+
+?>

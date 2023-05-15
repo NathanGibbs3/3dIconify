@@ -1,0 +1,35 @@
+// BASE Project 3dIconify file.
+
+src = build/3dIcons // 3dIcons Source.
+dst = images // Destination for generated icons.
+
+iconset = front // 3dIcon Icon set to use.
+icontype = color // 3dIcon Icon type to use.
+
+clear = 1 // Enable Background Transparency.
+size = 96 // Set generated Icon Size.
+
+// Follow BASE Icon Naming Standard.
+// All generated Icons will start with "base_icon_"
+naming = base_icon_
+
+// 3dIcon Name Request List with optional Translation to BASE Standard.
+// For example, the requested pencil icon from 3dIcons will be the edit icon
+// in BASE.
+// The long 3dIcons icon name
+// "build/3dIcons/3dicons-png-front-1.0.0/png/pencil/pencil-front-color.png"
+// becomes "images/base_icon_edit.png"
+//
+// Requested 3dIcon names without translation data will come through unchanged.
+// For example, the requested explorer icon from 3dIcons will be the explorer
+// icon in BASE.
+// The long 3dIcons icon name
+// "build/3dIcons/3dicons-png-front-1.0.0/png/explorer/explorer-front-color.png"
+// becomes "images/base_icon_explorer.png"
+
+bulb = exclamation
+pencil = edit
+thumb-up = yes
+thumb-down = no
+trash-can = delete
+mail =

@@ -29,8 +29,6 @@ if [ "$TRAVIS" != "true" ]; then
 	$pcr -s --report-gitblame --report-file="$rd/5-$pcs-gbs"
 	$pcr --report-code --report-file="$rd/6-$pcs-code"
 	$pcr -s --report-code --report-file="$rd/7-$pcs-scode"
-	$pcr --generator=HTML > "./docs/3dIconifyCS.html"
-	$pcr --generator=Markdown > "./docs/3dIconify-Coding-Standards.md"
 	if [ "$td" == "tests" ]; then
 		cd $td
 	fi

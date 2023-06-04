@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ruleset
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	name="BASE"
+	name="3dIconify"
 	xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/squizlabs/PHP_CodeSniffer/master/phpcs.xsd"
 >
 	<description>The coding standard for the 3dIconify Project.</description>
@@ -21,8 +21,6 @@
 	<exclude-pattern type="relative">^composer.phar$</exclude-pattern>
 	<!-- # Local PHPUnit Test Generation noise -->
 	<exclude-pattern type="relative">^(custom|tests)/*</exclude-pattern>
-	<!-- # BASE user contributed software -->
-	<exclude-pattern type="relative">^contrib/*</exclude-pattern>
 
 	<rule ref="PHPCompatibility">
 		<exclude name="PHPCompatibility.FunctionNameRestrictions.NewMagicMethods.__constructFound"/>

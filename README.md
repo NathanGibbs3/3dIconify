@@ -11,8 +11,7 @@ project resource naming standards.
 ## This project enables developers to:
 1. Work with a professionally designed open source icon set.
 1. Scale icons to the size requirements of their project.
-1. Spend less time installing npm compoents or learning yet anothe REST API
-just to get icons.
+1. Spend less time installing npm compoents or learning yet another REST API just to get icons.
 1. Spend more time writing code. :smile:
 
 # History:
